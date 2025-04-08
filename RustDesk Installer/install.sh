@@ -16,6 +16,18 @@ ENV_FILE=".env"
 DEFAULT_MIRROR="rustdesk/rustdesk-server:latest"
 MIRROR_REGISTRY="hub.1panel.dev"
 
+# 开屏LOGO
+logo='
+██████╗ ██╗   ██╗███████╗████████╗██████╗ ███████╗███████╗██╗  ██╗
+██╔══██╗██║   ██║██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔════╝██║ ██╔╝
+██████╔╝██║   ██║███████╗   ██║   ██║  ██║█████╗  ███████╗█████╔╝ 
+██╔══██╗██║   ██║╚════██║   ██║   ██║  ██║██╔══╝  ╚════██║██╔═██╗ 
+██║  ██║╚██████╔╝███████║   ██║   ██████╔╝███████╗███████║██║  ██╗
+╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝
+                                                        Installer
+
+'
+
 # 安装依赖
 install_dependency() {
     local package=$1
@@ -98,7 +110,8 @@ check_dependencies() {
 
 # 收集基础配置
 collect_basic_config() {
-    print_message "$YELLOW" "\n=== RustDesk 内网中继服务器配置 ==="
+    print
+    print_message "$YELLOW" "\n=== RustDesk 内网中继服务器配置脚本 ==="
     
     # 收集 IP 地址
     read -p "请输入服务器IP地址 [$DEFAULT_IP]: " RELAY_IP
@@ -239,8 +252,14 @@ show_result() {
     
     # 获取并显示公钥
     echo -e "\n${YELLOW}服务器公钥:${NC}"
-    if ! docker exec hbbs cat /root/id_ed25519.pub; then
-        print_message "$RED" "警告: 无法读取服务器公钥，请稍后重试"
+    if ! docker exec -i hbbs /bin/sh -c "cat /root/id_ed25519.pub 2>/dev/null"; then
+        # 如果第一次尝试失败，等待几秒后重试
+        sleep 3
+        if ! docker exec -i hbbs /bin/sh -c "cat /root/id_ed25519.pub 2>/dev/null"; then
+            print_message "$RED" "警告: 无法读取服务器公钥，请手动执行以下命令查看:"
+            echo -e "${YELLOW}docker exec -i hbbs /bin/sh -c 'cat /root/id_ed25519.pub'${NC}"
+            print_message "$RED" "内网环境无需配置公钥，如需要外网部署，请忽略此提示。"
+        fi
     fi
     
     echo -e "\n${YELLOW}客户端配置步骤:${NC}"
@@ -261,6 +280,14 @@ show_result() {
     echo "sudo ufw allow 21116/tcp"
     echo "sudo ufw allow 21116/udp"
     echo -e "sudo ufw allow 21117/tcp\n"
+
+    # 显示可以安装1panel管理服务
+    echo -e "\n${YELLOW}推荐安装1panle可视化管理面板${NC}"
+    echo -e "1panel是一款开源的可视化管理面板，它可以帮助您更方便地管理和部署各种服务。\n"
+    echo -e "Ubuntu 安装命令:"
+    print_message "$GREEN" "curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sudo bash quick_start.sh"
+    echo -e "Debian 安装命令:"
+    print_message "$GREEN" "curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh"
 }
 
 # 清理函数
@@ -307,7 +334,8 @@ deploy_service() {
 # 主函数
 main() {
     # 显示欢迎信息
-    print_message "$GREEN" "=== RustDesk 内网中继服务器安装程序 ==="
+    echo -e "$logo"
+    print_message "$GREEN" "=== RustDesk Installer ==="
     print_message "$YELLOW" "本脚本将帮助您快速部署内网专用的RustDesk中继服务器\n"
 
     # 检查依赖
